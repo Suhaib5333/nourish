@@ -7,7 +7,7 @@ import { uid } from '../../utils/uid';
 import { formatDate, formatTime, daysAgo } from '../../utils/dates';
 import { getTopTrigger, getAverageComfort, getComfortTrend } from '../../utils/analytics';
 import { TRIGGER_TYPES, MOODS, TRIGGER_WEATHER, MEAL_TIMES } from '../../utils/constants';
-import { Cloud, Flower2, Plus, Utensils } from 'lucide-react';
+import { Cloud, Flower2, Pencil, Plus, Trash2, Utensils } from 'lucide-react';
 import {
   Button,
   Card,
@@ -18,6 +18,7 @@ import {
   Badge,
   ComfortPicker,
   SegmentedControl,
+  ConfirmDialog,
   EmptyState,
 } from '../../components/ui';
 
@@ -226,6 +227,10 @@ function TriggerLogView() {
   const show = useToast();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ food: '', triggerType: '', mealTime: '', description: '', avoided: true });
+  const [editId, setEditId] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ food: '', triggerType: '', mealTime: '', description: '', avoided: true });
+  const [deleteId, setDeleteId] = useState(null);
 
   const weekCount = useMemo(() => getWeekTriggerCount(triggers), [triggers]);
   const topTrigger = useMemo(() => getTopTrigger(triggers), [triggers]);
@@ -254,6 +259,26 @@ function TriggerLogView() {
     show('Trigger logged');
     resetForm();
     setOpen(false);
+  };
+
+  const startEdit = (t) => {
+    setEditId(t.id);
+    setEditForm({ food: t.food, triggerType: t.triggerType, mealTime: t.mealTime || '', description: t.description || '', avoided: t.avoided });
+    setEditOpen(true);
+  };
+
+  const saveEdit = () => {
+    if (!editForm.food.trim() || !editForm.triggerType) return;
+    setTriggers((prev) => prev.map((t) => t.id === editId ? { ...t, food: editForm.food.trim(), triggerType: editForm.triggerType, mealTime: editForm.mealTime, description: editForm.description.trim(), avoided: editForm.avoided } : t));
+    show('Trigger updated!');
+    setEditOpen(false);
+    setEditId(null);
+  };
+
+  const confirmDelete = () => {
+    setTriggers((prev) => prev.filter((t) => t.id !== deleteId));
+    show('Trigger removed');
+    setDeleteId(null);
   };
 
   return (
@@ -333,8 +358,18 @@ function TriggerLogView() {
                             {t.description}
                           </div>
                         )}
-                        <div style={{ fontSize: 12, color: '#A0A0A0', marginTop: 6 }}>
-                          {daysAgo(t.date)} &middot; {formatDate(t.date)} &middot; {formatTime(t.date)}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                          <div style={{ fontSize: 12, color: '#A0A0A0' }}>
+                            {daysAgo(t.date)} &middot; {formatDate(t.date)} &middot; {formatTime(t.date)}
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <motion.button whileTap={{ scale: 0.9 }} onClick={() => startEdit(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center' }}>
+                              <Pencil size={16} color="var(--stone)" />
+                            </motion.button>
+                            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setDeleteId(t.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center' }}>
+                              <Trash2 size={16} color="var(--stone)" />
+                            </motion.button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -437,6 +472,76 @@ function TriggerLogView() {
           Log Trigger
         </Button>
       </BottomSheet>
+
+      {/* Edit trigger sheet */}
+      <BottomSheet open={editOpen} onClose={() => { setEditOpen(false); setEditId(null); }} title="Edit Trigger">
+        <Input
+          label="Food name"
+          placeholder="What food triggered you?"
+          value={editForm.food}
+          onChange={(e) => setEditForm((f) => ({ ...f, food: e.target.value }))}
+        />
+        <Select
+          label="Trigger type"
+          options={TRIGGER_TYPES}
+          value={editForm.triggerType}
+          onChange={(e) => setEditForm((f) => ({ ...f, triggerType: e.target.value }))}
+        />
+        <Select
+          label="When did this happen?"
+          options={MEAL_TIMES}
+          value={editForm.mealTime}
+          onChange={(e) => setEditForm((f) => ({ ...f, mealTime: e.target.value }))}
+        />
+        <Textarea
+          label="Description (optional)"
+          placeholder="What happened?"
+          value={editForm.description}
+          onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+        />
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#4A5C4C', marginBottom: 8 }}>
+            Did you avoid the food?
+          </label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[
+              { val: true, label: 'Yes, avoided', color: 'var(--danger)' },
+              { val: false, label: 'No, I ate it', color: 'var(--sage)' },
+            ].map((opt) => (
+              <motion.button
+                key={String(opt.val)}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setEditForm((f) => ({ ...f, avoided: opt.val }))}
+                style={{
+                  flex: 1,
+                  padding: '10px 0',
+                  borderRadius: 'var(--radius-sm)',
+                  border: `1.5px solid ${editForm.avoided === opt.val ? opt.color : 'var(--sand)'}`,
+                  backgroundColor: editForm.avoided === opt.val ? opt.color + '18' : 'var(--white)',
+                  color: editForm.avoided === opt.val ? opt.color : 'var(--stone)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {opt.label}
+              </motion.button>
+            ))}
+          </div>
+        </div>
+        <Button onClick={saveEdit} style={{ width: '100%', marginTop: 4 }}>
+          Save Changes
+        </Button>
+      </BottomSheet>
+
+      {/* Delete trigger confirm */}
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Delete this trigger?"
+        message="This entry will be permanently removed."
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </>
   );
 }
@@ -556,6 +661,10 @@ function MoodMealsView() {
   const show = useToast();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ meal: '', mealTime: '', moodBefore: '', moodAfter: '', comfort: 3, notes: '' });
+  const [editId, setEditId] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ meal: '', mealTime: '', moodBefore: '', moodAfter: '', comfort: 3, notes: '' });
+  const [deleteId, setDeleteId] = useState(null);
 
   const recent7 = useMemo(() => {
     const cutoff = Date.now() - 7 * 86400000;
@@ -592,6 +701,26 @@ function MoodMealsView() {
     show('Mood logged');
     resetForm();
     setOpen(false);
+  };
+
+  const startEdit = (m) => {
+    setEditId(m.id);
+    setEditForm({ meal: m.meal, mealTime: m.mealTime || '', moodBefore: m.moodBefore, moodAfter: m.moodAfter, comfort: m.comfort, notes: m.notes || '' });
+    setEditOpen(true);
+  };
+
+  const saveEdit = () => {
+    if (!editForm.meal.trim() || !editForm.moodBefore || !editForm.moodAfter) return;
+    setMoods((prev) => prev.map((m) => m.id === editId ? { ...m, meal: editForm.meal.trim(), mealTime: editForm.mealTime, moodBefore: editForm.moodBefore, moodAfter: editForm.moodAfter, comfort: editForm.comfort, notes: editForm.notes.trim() } : m));
+    show('Mood entry updated!');
+    setEditOpen(false);
+    setEditId(null);
+  };
+
+  const confirmDelete = () => {
+    setMoods((prev) => prev.filter((m) => m.id !== deleteId));
+    show('Mood entry removed');
+    setDeleteId(null);
   };
 
   const moodLabel = (val) => {
@@ -686,8 +815,18 @@ function MoodMealsView() {
                   {m.notes && (
                     <div style={{ fontSize: 13, color: 'var(--stone)', lineHeight: 1.4 }}>{m.notes}</div>
                   )}
-                  <div style={{ fontSize: 12, color: '#A0A0A0', marginTop: 6 }}>
-                    {daysAgo(m.date)} &middot; {formatDate(m.date)} &middot; {formatTime(m.date)}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                    <div style={{ fontSize: 12, color: '#A0A0A0' }}>
+                      {daysAgo(m.date)} &middot; {formatDate(m.date)} &middot; {formatTime(m.date)}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <motion.button whileTap={{ scale: 0.9 }} onClick={() => startEdit(m)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center' }}>
+                        <Pencil size={16} color="var(--stone)" />
+                      </motion.button>
+                      <motion.button whileTap={{ scale: 0.9 }} onClick={() => setDeleteId(m.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center' }}>
+                        <Trash2 size={16} color="var(--stone)" />
+                      </motion.button>
+                    </div>
                   </div>
                 </Card>
               </motion.div>
@@ -763,6 +902,57 @@ function MoodMealsView() {
           Log Mood
         </Button>
       </BottomSheet>
+
+      {/* Edit mood sheet */}
+      <BottomSheet open={editOpen} onClose={() => { setEditOpen(false); setEditId(null); }} title="Edit Mood & Meal">
+        <Input
+          label="Meal name"
+          placeholder="What did you eat?"
+          value={editForm.meal}
+          onChange={(e) => setEditForm((f) => ({ ...f, meal: e.target.value }))}
+        />
+        <Select
+          label="Meal time"
+          options={MEAL_TIMES}
+          value={editForm.mealTime}
+          onChange={(e) => setEditForm((f) => ({ ...f, mealTime: e.target.value }))}
+        />
+        <Select
+          label="Mood before eating"
+          options={MOODS}
+          value={editForm.moodBefore}
+          onChange={(e) => setEditForm((f) => ({ ...f, moodBefore: e.target.value }))}
+        />
+        <Select
+          label="Mood after eating"
+          options={MOODS}
+          value={editForm.moodAfter}
+          onChange={(e) => setEditForm((f) => ({ ...f, moodAfter: e.target.value }))}
+        />
+        <ComfortPicker
+          label="Comfort level"
+          value={editForm.comfort}
+          onChange={(v) => setEditForm((f) => ({ ...f, comfort: v }))}
+        />
+        <Textarea
+          label="Notes (optional)"
+          placeholder="How did the meal go?"
+          value={editForm.notes}
+          onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+        />
+        <Button onClick={saveEdit} style={{ width: '100%', marginTop: 4 }}>
+          Save Changes
+        </Button>
+      </BottomSheet>
+
+      {/* Delete mood confirm */}
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Delete this entry?"
+        message="This entry will be permanently removed."
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </>
   );
 }

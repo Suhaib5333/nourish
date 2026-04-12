@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { useToast } from '../../hooks/useToast';
 import { uid } from '../../utils/uid';
 import { formatDate, daysAgo } from '../../utils/dates';
-import { Trophy, Plus } from 'lucide-react';
+import { Pencil, Plus, Trash2, Trophy } from 'lucide-react';
 import {
   Button,
   Card,
@@ -12,6 +12,7 @@ import {
   Input,
   Textarea,
   Badge,
+  ConfirmDialog,
   EmptyState,
 } from '../../components/ui';
 
@@ -317,6 +318,10 @@ export default function WinsPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ food: '', notes: '' });
   const [confetti, setConfetti] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ food: '', notes: '' });
+  const [deleteId, setDeleteId] = useState(null);
 
   const sorted = useMemo(
     () => [...wins].sort((a, b) => new Date(b.date) - new Date(a.date)),
@@ -345,6 +350,26 @@ export default function WinsPage() {
     setConfetti(true);
     setTimeout(() => setConfetti(false), 2200);
   }, [form, setWins, show]);
+
+  const startEdit = (w) => {
+    setEditId(w.id);
+    setEditForm({ food: w.food, notes: w.notes || '' });
+    setEditOpen(true);
+  };
+
+  const saveEdit = () => {
+    if (!editForm.food.trim()) return;
+    setWins((prev) => prev.map((w) => w.id === editId ? { ...w, food: editForm.food.trim(), notes: editForm.notes.trim() } : w));
+    show('Win updated!');
+    setEditOpen(false);
+    setEditId(null);
+  };
+
+  const confirmDelete = () => {
+    setWins((prev) => prev.filter((w) => w.id !== deleteId));
+    show('Win removed');
+    setDeleteId(null);
+  };
 
   return (
     <div style={{ padding: '16px 16px 100px' }}>
@@ -430,8 +455,18 @@ export default function WinsPage() {
                             {w.notes}
                           </div>
                         )}
-                        <div style={{ fontSize: 12, color: '#A0A0A0', marginTop: 6 }}>
-                          {daysAgo(w.date)} &middot; {formatDate(w.date)}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                          <div style={{ fontSize: 12, color: '#A0A0A0' }}>
+                            {daysAgo(w.date)} &middot; {formatDate(w.date)}
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <motion.button whileTap={{ scale: 0.9 }} onClick={() => startEdit(w)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center' }}>
+                              <Pencil size={16} color="var(--stone)" />
+                            </motion.button>
+                            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setDeleteId(w.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center' }}>
+                              <Trash2 size={16} color="var(--stone)" />
+                            </motion.button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -487,6 +522,34 @@ export default function WinsPage() {
           Celebrate Win
         </Button>
       </BottomSheet>
+
+      {/* Edit win sheet */}
+      <BottomSheet open={editOpen} onClose={() => { setEditOpen(false); setEditId(null); }} title="Edit Win">
+        <Input
+          label="Food name"
+          placeholder="What's your win?"
+          value={editForm.food}
+          onChange={(e) => setEditForm((f) => ({ ...f, food: e.target.value }))}
+        />
+        <Textarea
+          label="Notes (optional)"
+          placeholder="Tell us about this victory!"
+          value={editForm.notes}
+          onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+        />
+        <Button onClick={saveEdit} style={{ width: '100%', marginTop: 4 }}>
+          Save Changes
+        </Button>
+      </BottomSheet>
+
+      {/* Delete win confirm */}
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Remove this win?"
+        message="Are you sure? Every win counts!"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   );
 }

@@ -15,7 +15,7 @@ import {
 import { uid } from '../../utils/uid';
 import { formatDate } from '../../utils/dates';
 import { SESSION_TYPES } from '../../utils/constants';
-import { Plus, Trash2, ChevronDown, ChevronUp, ClipboardList } from 'lucide-react';
+import { Plus, Trash2, Pencil, ChevronDown, ChevronUp, ClipboardList } from 'lucide-react';
 
 const PURPLE = '#7B68A8';
 
@@ -34,6 +34,8 @@ export default function SessionNotes() {
   const [form, setForm] = useState({ type: '', content: '' });
   const [expanded, setExpanded] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [editSheet, setEditSheet] = useState(null);
+  const [editForm, setEditForm] = useState({ type: '', content: '' });
 
   const sorted = [...sessionNotes].sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -63,6 +65,31 @@ export default function SessionNotes() {
     setSessionNotes((prev) => prev.filter((n) => n.id !== deleteTarget));
     setDeleteTarget(null);
     toast('Note deleted');
+  };
+
+  const openEdit = (note) => {
+    setEditForm({ type: note.sessionType, content: note.content });
+    setEditSheet(note.id);
+  };
+
+  const handleEdit = () => {
+    if (!editForm.type) {
+      toast('Please select a session type', 'error');
+      return;
+    }
+    if (!editForm.content.trim()) {
+      toast('Please enter note content', 'error');
+      return;
+    }
+    setSessionNotes((prev) =>
+      prev.map((n) =>
+        n.id === editSheet
+          ? { ...n, sessionType: editForm.type, content: editForm.content.trim() }
+          : n,
+      ),
+    );
+    setEditSheet(null);
+    toast('Note updated!');
   };
 
   return (
@@ -154,9 +181,32 @@ export default function SessionNotes() {
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      style={{ marginTop: 10, borderTop: '1px solid #F0EBE5', paddingTop: 10 }}
+                      style={{ marginTop: 10, borderTop: '1px solid #F0EBE5', paddingTop: 10, display: 'flex', alignItems: 'center', gap: 12 }}
                     >
-                      <button
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEdit(note);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: PURPLE,
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 0,
+                        }}
+                      >
+                        <Pencil size={16} color={PURPLE} />
+                        Edit note
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
                         onClick={(e) => {
                           e.stopPropagation();
                           setDeleteTarget(note.id);
@@ -174,9 +224,9 @@ export default function SessionNotes() {
                           padding: 0,
                         }}
                       >
-                        <Trash2 size={13} />
+                        <Trash2 size={16} color="#D32F2F" />
                         Delete note
-                      </button>
+                      </motion.button>
                     </motion.div>
                   )}
                 </Card>
@@ -202,6 +252,25 @@ export default function SessionNotes() {
         />
         <Button style={{ width: '100%', backgroundColor: PURPLE, marginTop: 8 }} onClick={handleCreate}>
           Save Note
+        </Button>
+      </BottomSheet>
+
+      <BottomSheet open={!!editSheet} onClose={() => setEditSheet(null)} title="Edit Session Note">
+        <Select
+          label="Session Type"
+          options={SESSION_TYPES}
+          value={editForm.type}
+          onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value }))}
+        />
+        <Textarea
+          label="Note Content"
+          placeholder="Document session observations, patient progress, goals discussed..."
+          value={editForm.content}
+          onChange={(e) => setEditForm((f) => ({ ...f, content: e.target.value }))}
+          style={{ minHeight: 120 }}
+        />
+        <Button style={{ width: '100%', backgroundColor: PURPLE, marginTop: 8 }} onClick={handleEdit}>
+          Save Changes
         </Button>
       </BottomSheet>
 

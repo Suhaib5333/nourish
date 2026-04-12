@@ -5,7 +5,7 @@ import { useToast } from '../../hooks/useToast';
 import { uid } from '../../utils/uid';
 import { CATEGORIES, CATEGORY_ICONS, CATEGORY_COLORS } from '../../utils/constants';
 import { formatShortDate, formatDate } from '../../utils/dates';
-import { SegmentedControl, BottomSheet, Button, Input, Textarea, Select, Badge, EmptyState } from '../../components/ui';
+import { SegmentedControl, BottomSheet, Button, Input, Textarea, Select, Badge, ConfirmDialog, EmptyState } from '../../components/ui';
 import { Plus, MapPin, BookOpen, Utensils } from 'lucide-react';
 
 /* ─── Zone layout for the terrain map ─── */
@@ -410,8 +410,71 @@ function AddFoodForm({ onSubmit, onClose }) {
   );
 }
 
+/* ─── Edit Food Form ─── */
+function EditFoodForm({ food, onSubmit, onClose }) {
+  const [name, setName] = useState(food.name);
+  const [category, setCategory] = useState(food.category);
+  const [prep, setPrep] = useState(food.prepMethod || '');
+  const [likes, setLikes] = useState(food.whatILike || '');
+  const [dislikes, setDislikes] = useState(food.wouldntEat || '');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name.trim() || !category) return;
+    onSubmit({
+      ...food,
+      name: name.trim(),
+      category,
+      prepMethod: prep.trim(),
+      whatILike: likes.trim(),
+      wouldntEat: dislikes.trim(),
+    });
+    onClose();
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <Input
+        label={<><Utensils size={13} style={{ marginRight: 4, verticalAlign: 'middle', opacity: 0.7 }} />Food name</>}
+        placeholder="e.g. Chicken nuggets"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        required
+      />
+      <Select
+        label="Category"
+        options={CATEGORIES}
+        value={category}
+        onChange={e => setCategory(e.target.value)}
+        required
+      />
+      <Textarea
+        label="Prep method"
+        placeholder="How do you like it prepared?"
+        value={prep}
+        onChange={e => setPrep(e.target.value)}
+      />
+      <Textarea
+        label="What I like about it"
+        placeholder="Texture, taste, temperature..."
+        value={likes}
+        onChange={e => setLikes(e.target.value)}
+      />
+      <Textarea
+        label="Wouldn't eat if..."
+        placeholder="e.g. Too crunchy, wrong brand..."
+        value={dislikes}
+        onChange={e => setDislikes(e.target.value)}
+      />
+      <Button type="submit" style={{ width: '100%', marginTop: 8 }}>
+        Save Changes
+      </Button>
+    </form>
+  );
+}
+
 /* ─── Food Detail Sheet ─── */
-function FoodDetail({ food }) {
+function FoodDetail({ food, onEdit, onDelete }) {
   if (!food) return null;
   const color = CATEGORY_COLORS[food.category];
   return (
@@ -446,6 +509,10 @@ function FoodDetail({ food }) {
       {food.dateAdded && (
         <DetailRow label="Added" value={formatDate(food.dateAdded)} />
       )}
+      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+        <Button onClick={() => onEdit(food)} style={{ flex: 1 }}>Edit</Button>
+        <Button variant="danger" onClick={() => onDelete(food)} style={{ flex: 1 }}>Delete</Button>
+      </div>
     </div>
   );
 }
@@ -469,6 +536,8 @@ export default function FoodsPage() {
   const [view, setView] = useState('map');
   const [addOpen, setAddOpen] = useState(false);
   const [detailFood, setDetailFood] = useState(null);
+  const [editingFood, setEditingFood] = useState(null);
+  const [deletingFood, setDeletingFood] = useState(null);
 
   const handleAddFood = useCallback((food) => {
     setFoodMap(prev => [...prev, food]);
@@ -478,6 +547,20 @@ export default function FoodsPage() {
   const handlePinClick = useCallback((food) => {
     setDetailFood(food);
   }, []);
+
+  const handleEditFood = useCallback((updated) => {
+    setFoodMap(prev => prev.map(f => f.id === updated.id ? updated : f));
+    setDetailFood(null);
+    show('Food updated!');
+  }, [setFoodMap, show]);
+
+  const handleDeleteFood = useCallback(() => {
+    if (!deletingFood) return;
+    setFoodMap(prev => prev.filter(f => f.id !== deletingFood.id));
+    setDeletingFood(null);
+    setDetailFood(null);
+    show('Food removed');
+  }, [deletingFood, setFoodMap, show]);
 
   if (!allLoaded) return null;
 
@@ -597,8 +680,38 @@ export default function FoodsPage() {
         onClose={() => setDetailFood(null)}
         title={detailFood?.name || 'Food Details'}
       >
-        <FoodDetail food={detailFood} />
+        <FoodDetail
+          food={detailFood}
+          onEdit={(food) => { setDetailFood(null); setEditingFood(food); }}
+          onDelete={(food) => setDeletingFood(food)}
+        />
       </BottomSheet>
+
+      {/* Edit food sheet */}
+      <BottomSheet
+        open={!!editingFood}
+        onClose={() => setEditingFood(null)}
+        title="Edit Food"
+      >
+        {editingFood && (
+          <EditFoodForm
+            food={editingFood}
+            onSubmit={handleEditFood}
+            onClose={() => setEditingFood(null)}
+          />
+        )}
+      </BottomSheet>
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={!!deletingFood}
+        title={`Remove ${deletingFood?.name}?`}
+        message="This will remove it from your food map and library."
+        confirmText="Remove"
+        danger
+        onConfirm={handleDeleteFood}
+        onCancel={() => setDeletingFood(null)}
+      />
     </div>
   );
 }

@@ -13,10 +13,11 @@ import {
   Badge,
   EmptyState,
   ProgressBar,
+  ConfirmDialog,
 } from '../../components/ui';
 import { uid } from '../../utils/uid';
 import { formatShortDate } from '../../utils/dates';
-import { Plus, MessageSquare, X, Target, Check, HelpCircle } from 'lucide-react';
+import { Plus, MessageSquare, X, Target, Check, HelpCircle, Pencil, Trash2 } from 'lucide-react';
 
 const PURPLE = '#7B68A8';
 
@@ -56,6 +57,9 @@ function BridgesTab() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [noteSheet, setNoteSheet] = useState(null);
   const [noteText, setNoteText] = useState('');
+  const [editSheet, setEditSheet] = useState(null);
+  const [editForm, setEditForm] = useState({ safeFood: '', targetFood: '', note: '' });
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const [form, setForm] = useState({ safeFood: '', targetFood: '', note: '' });
 
@@ -101,6 +105,43 @@ function BridgesTab() {
     setNoteText('');
     setNoteSheet(null);
     toast('Note added');
+  };
+
+  const openEdit = (bridge) => {
+    setEditForm({
+      safeFood: bridge.safeFoodName,
+      targetFood: bridge.newFoodName,
+      note: bridge.therapistNote || '',
+    });
+    setEditSheet(bridge.id);
+  };
+
+  const handleEdit = () => {
+    if (!editForm.safeFood || !editForm.targetFood.trim()) {
+      toast('Please fill in safe food and target food', 'error');
+      return;
+    }
+    setBridges((prev) =>
+      prev.map((b) =>
+        b.id === editSheet
+          ? {
+              ...b,
+              safeFoodName: editForm.safeFood,
+              newFoodName: editForm.targetFood.trim(),
+              therapistNote: editForm.note.trim(),
+            }
+          : b,
+      ),
+    );
+    setEditSheet(null);
+    toast('Bridge updated!');
+  };
+
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    setBridges((prev) => prev.filter((b) => b.id !== deleteTarget));
+    setDeleteTarget(null);
+    toast('Bridge removed');
   };
 
   const statusColor = (s) => {
@@ -185,28 +226,67 @@ function BridgesTab() {
                   </div>
                 )}
 
-                <button
-                  onClick={() => {
-                    setNoteSheet(b.id);
-                    setNoteText('');
-                  }}
-                  style={{
-                    marginTop: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: PURPLE,
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: 0,
-                  }}
-                >
-                  <MessageSquare size={13} />
-                  Add note
-                </button>
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <button
+                    onClick={() => {
+                      setNoteSheet(b.id);
+                      setNoteText('');
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: PURPLE,
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    <MessageSquare size={13} />
+                    Add note
+                  </button>
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => openEdit(b)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: PURPLE,
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    <Pencil size={16} color={PURPLE} />
+                    Edit
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setDeleteTarget(b.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#D32F2F',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    <Trash2 size={16} color="#D32F2F" />
+                    Delete
+                  </motion.button>
+                </div>
               </Card>
             </motion.div>
           ))}
@@ -251,6 +331,40 @@ function BridgesTab() {
           Save Note
         </Button>
       </BottomSheet>
+
+      <BottomSheet open={!!editSheet} onClose={() => setEditSheet(null)} title="Edit Bridge Food">
+        <Select
+          label="Safe Food (starting point)"
+          options={safeFoodOptions}
+          value={editForm.safeFood}
+          onChange={(e) => setEditForm((f) => ({ ...f, safeFood: e.target.value }))}
+        />
+        <Input
+          label="Target Food"
+          placeholder="e.g. Grilled chicken strips"
+          value={editForm.targetFood}
+          onChange={(e) => setEditForm((f) => ({ ...f, targetFood: e.target.value }))}
+        />
+        <Textarea
+          label="Clinical Note (optional)"
+          placeholder="Rationale or approach notes..."
+          value={editForm.note}
+          onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))}
+        />
+        <Button style={{ width: '100%', backgroundColor: PURPLE, marginTop: 8 }} onClick={handleEdit}>
+          Save Changes
+        </Button>
+      </BottomSheet>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete Bridge"
+        message="This bridge food will be permanently removed. Are you sure?"
+        confirmText="Delete"
+        danger
+      />
     </>
   );
 }
@@ -262,6 +376,11 @@ function LaddersTab() {
   const [targetFood, setTargetFood] = useState('');
   const [steps, setSteps] = useState(['', '', '', '']);
   const placeholders = ['Look at the food', 'Smell the food', 'Touch / pick up', 'Taste a small bite'];
+
+  const [editSheet, setEditSheet] = useState(null);
+  const [editTarget, setEditTarget] = useState('');
+  const [editSteps, setEditSteps] = useState([]);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const addStep = () => setSteps((s) => [...s, '']);
 
@@ -297,6 +416,57 @@ function LaddersTab() {
     setSteps(['', '', '', '']);
     setSheetOpen(false);
     toast('Ladder created');
+  };
+
+  const openEdit = (ladder) => {
+    setEditTarget(ladder.targetFood);
+    setEditSteps(ladder.steps.map((s) => s.label));
+    setEditSheet(ladder.id);
+  };
+
+  const addEditStep = () => setEditSteps((s) => [...s, '']);
+
+  const removeEditStep = (i) => {
+    if (editSteps.length <= 2) return;
+    setEditSteps((s) => s.filter((_, idx) => idx !== i));
+  };
+
+  const handleEdit = () => {
+    if (!editTarget.trim()) {
+      toast('Please enter a target food', 'error');
+      return;
+    }
+    const filledSteps = editSteps.filter((s) => s.trim());
+    if (filledSteps.length < 2) {
+      toast('Add at least 2 steps', 'error');
+      return;
+    }
+    setLadders((prev) =>
+      prev.map((l) => {
+        if (l.id !== editSheet) return l;
+        const existingDone = {};
+        l.steps.forEach((s) => { existingDone[s.label] = s.done; });
+        return {
+          ...l,
+          targetFood: editTarget.trim(),
+          steps: filledSteps.map((s, i) => ({
+            id: uid(),
+            label: s.trim(),
+            order: i,
+            done: existingDone[s.trim()] || false,
+          })),
+        };
+      }),
+    );
+    setEditSheet(null);
+    toast('Ladder updated!');
+  };
+
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    setLadders((prev) => prev.filter((l) => l.id !== deleteTarget));
+    setDeleteTarget(null);
+    toast('Ladder removed');
   };
 
   return (
@@ -364,6 +534,46 @@ function LaddersTab() {
                     </span>
                   </div>
                 ))}
+              </div>
+              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid #F0EBE5', paddingTop: 10 }}>
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => openEdit(l)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: PURPLE,
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  <Pencil size={16} color={PURPLE} />
+                  Edit
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setDeleteTarget(l.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#D32F2F',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  <Trash2 size={16} color="#D32F2F" />
+                  Delete
+                </motion.button>
               </div>
             </Card>
           );
@@ -441,6 +651,88 @@ function LaddersTab() {
           Create Ladder
         </Button>
       </BottomSheet>
+
+      <BottomSheet open={!!editSheet} onClose={() => setEditSheet(null)} title="Edit Exposure Ladder">
+        <Input
+          label="Target Food"
+          placeholder="e.g. Broccoli"
+          value={editTarget}
+          onChange={(e) => setEditTarget(e.target.value)}
+        />
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#4A5C4C', marginBottom: 8 }}>
+          Steps (in order of exposure)
+        </div>
+        {editSteps.map((s, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--stone)', width: 18, textAlign: 'center' }}>
+              {i + 1}
+            </span>
+            <input
+              value={s}
+              onChange={(e) => {
+                const next = [...editSteps];
+                next[i] = e.target.value;
+                setEditSteps(next);
+              }}
+              placeholder={placeholders[i] || `Step ${i + 1}`}
+              style={{
+                flex: 1,
+                padding: '9px 12px',
+                borderRadius: 8,
+                border: '1.5px solid var(--sand)',
+                fontSize: 14,
+                fontFamily: 'inherit',
+                backgroundColor: '#FAFAF8',
+                color: 'var(--bark)',
+                boxSizing: 'border-box',
+                outline: 'none',
+              }}
+            />
+            {editSteps.length > 2 && (
+              <button
+                onClick={() => removeEditStep(i)}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--stone)',
+                  padding: 2,
+                }}
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          onClick={addEditStep}
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: PURPLE,
+            backgroundColor: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '4px 0',
+            marginBottom: 12,
+          }}
+        >
+          + Add step
+        </button>
+        <Button style={{ width: '100%', backgroundColor: PURPLE, marginTop: 4 }} onClick={handleEdit}>
+          Save Changes
+        </Button>
+      </BottomSheet>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete Ladder"
+        message="This exposure ladder will be permanently removed. Are you sure?"
+        confirmText="Delete"
+        danger
+      />
     </>
   );
 }

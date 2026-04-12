@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, ChevronDown, ChevronUp, GitBranch } from 'lucide-react';
+import { Plus, Trash2, Pencil, ChevronDown, ChevronUp, GitBranch } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../../hooks/useToast';
 import { uid } from '../../utils/uid';
@@ -223,12 +223,17 @@ function BridgeCard({ bridge, onTap }) {
 /*  Bridge detail sheet                                                */
 /* ------------------------------------------------------------------ */
 
-function BridgeDetailSheet({ bridge, open, onClose, onLogAttempt, onStatus, onLogWin }) {
+function BridgeDetailSheet({ bridge, open, onClose, onLogAttempt, onStatus, onLogWin, onEdit, onDelete, onDeleteAttempt }) {
   const [reaction, setReaction] = useState('');
   const [comfort, setComfort] = useState(3);
   const [showLog, setShowLog] = useState(false);
   const [confirmWin, setConfirmWin] = useState(false);
   const [pendingStatus, setPendingStatus] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [editSafe, setEditSafe] = useState('');
+  const [editNew, setEditNew] = useState('');
+  const [editSuggestedBy, setEditSuggestedBy] = useState('Self');
+  const [confirmDeleteBridge, setConfirmDeleteBridge] = useState(false);
 
   if (!bridge) return null;
 
@@ -249,6 +254,19 @@ function BridgeDetailSheet({ bridge, open, onClose, onLogAttempt, onStatus, onLo
     } else {
       onStatus(bridge.id, newStatus);
     }
+  };
+
+  const openEdit = () => {
+    setEditSafe(bridge.safeFoodName);
+    setEditNew(bridge.newFoodName);
+    setEditSuggestedBy(bridge.suggestedBy || 'Self');
+    setEditing(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editSafe.trim() || !editNew.trim()) return;
+    onEdit(bridge.id, { safeFoodName: editSafe.trim(), newFoodName: editNew.trim(), suggestedBy: editSuggestedBy });
+    setEditing(false);
   };
 
   return (
@@ -282,6 +300,35 @@ function BridgeDetailSheet({ bridge, open, onClose, onLogAttempt, onStatus, onLo
           ))}
         </div>
 
+        {/* Edit / Delete bridge buttons */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <Button variant="secondary" onClick={openEdit} style={{ flex: 1, fontSize: 13 }}>
+            <Pencil size={14} style={{ marginRight: 4 }} /> Edit Bridge
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setConfirmDeleteBridge(true)}
+            style={{ flex: 1, fontSize: 13, color: 'var(--danger)', borderColor: 'var(--danger)' }}
+          >
+            <Trash2 size={14} style={{ marginRight: 4 }} /> Delete Bridge
+          </Button>
+        </div>
+
+        {/* Inline edit form */}
+        <AnimatePresence>
+          {editing && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ marginBottom: 16 }}>
+              <Input label="Safe food name" value={editSafe} onChange={(e) => setEditSafe(e.target.value)} />
+              <Input label="New food name" value={editNew} onChange={(e) => setEditNew(e.target.value)} />
+              <Select label="Suggested by" options={['Self', 'Fatima']} value={editSuggestedBy} onChange={(e) => setEditSuggestedBy(e.target.value)} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button variant="secondary" onClick={() => setEditing(false)} style={{ flex: 1 }}>Cancel</Button>
+                <Button onClick={handleSaveEdit} style={{ flex: 1 }}>Save</Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Attempt history */}
         <h4 style={{ fontSize: 15, margin: '0 0 10px' }}>Attempt history</h4>
         {bridge.attempts && bridge.attempts.length > 0 ? (
@@ -299,13 +346,22 @@ function BridgeDetailSheet({ bridge, open, onClose, onLogAttempt, onStatus, onLo
                   borderLeft: `3px solid ${plankColor(a.comfort)}`,
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--bark)' }}>
                     Comfort: {a.comfort}/5
                   </span>
-                  <span style={{ fontSize: 11, color: 'var(--stone)' }}>
-                    {formatDate(a.date)} &middot; {formatTime(a.date)}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 11, color: 'var(--stone)' }}>
+                      {formatDate(a.date)} &middot; {formatTime(a.date)}
+                    </span>
+                    <motion.button
+                      whileTap={{ scale: 0.85 }}
+                      onClick={() => onDeleteAttempt(bridge.id, i)}
+                      style={{ padding: 2, color: 'var(--stone)', background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                      <Trash2 size={13} />
+                    </motion.button>
+                  </div>
                 </div>
                 <p style={{ fontSize: 13, color: 'var(--bark)', margin: 0, lineHeight: 1.4 }}>
                   {a.reaction}
@@ -357,6 +413,19 @@ function BridgeDetailSheet({ bridge, open, onClose, onLogAttempt, onStatus, onLo
           onStatus(bridge.id, 'accepted');
           setConfirmWin(false);
         }}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteBridge}
+        title="Remove this bridge?"
+        message="This will delete the bridge and all its attempts."
+        confirmText="Remove"
+        danger
+        onConfirm={() => {
+          onDelete(bridge.id);
+          setConfirmDeleteBridge(false);
+        }}
+        onCancel={() => setConfirmDeleteBridge(false)}
       />
     </>
   );
@@ -469,6 +538,28 @@ function BridgeFoodsView({ addOpen, onCloseAdd }) {
     toast('Win logged!', 'success');
   };
 
+  const handleEditBridge = (id, updates) => {
+    setBridges((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+    toast('Bridge updated!', 'success');
+  };
+
+  const handleDeleteBridge = (id) => {
+    setBridges((prev) => prev.filter((b) => b.id !== id));
+    setSelectedId(null);
+    toast('Bridge removed', 'success');
+  };
+
+  const handleDeleteAttempt = (bridgeId, attemptIdx) => {
+    setBridges((prev) =>
+      prev.map((b) =>
+        b.id === bridgeId
+          ? { ...b, attempts: b.attempts.filter((_, i) => i !== attemptIdx) }
+          : b,
+      ),
+    );
+    toast('Attempt removed', 'success');
+  };
+
   return (
     <>
       {bridges.length === 0 ? (
@@ -500,6 +591,9 @@ function BridgeFoodsView({ addOpen, onCloseAdd }) {
         onLogAttempt={handleLogAttempt}
         onStatus={handleStatus}
         onLogWin={handleLogWin}
+        onEdit={handleEditBridge}
+        onDelete={handleDeleteBridge}
+        onDeleteAttempt={handleDeleteAttempt}
       />
     </>
   );
@@ -513,7 +607,9 @@ function BridgeFoodsView({ addOpen, onCloseAdd }) {
 /*  Ladder visual                                                      */
 /* ------------------------------------------------------------------ */
 
-function LadderVisual({ ladder, onToggleRung }) {
+function LadderVisual({ ladder, onToggleRung, onEditStepLabel }) {
+  const [editingStepIdx, setEditingStepIdx] = useState(null);
+  const [editingStepValue, setEditingStepValue] = useState('');
   const steps = ladder.steps || [];
   const completedCount = steps.filter((s) => s.done).length;
   const pct = steps.length > 0 ? Math.round((completedCount / steps.length) * 100) : 0;
@@ -634,21 +730,67 @@ function LadderVisual({ ladder, onToggleRung }) {
                   )}
 
                   {/* Step label */}
-                  <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: step.done ? 700 : 500,
-                        color: step.done ? 'var(--bark)' : 'var(--stone)',
-                        backgroundColor: step.done ? 'var(--sage-light)' : '#FAFAF8',
-                        padding: '4px 10px',
-                        borderRadius: 'var(--radius-sm)',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      {step.label}
-                    </span>
-                    {step.done && step.completedAt && (
+                  <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    {editingStepIdx === i ? (
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+                        <input
+                          autoFocus
+                          value={editingStepValue}
+                          onChange={(e) => setEditingStepValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              if (editingStepValue.trim()) onEditStepLabel(ladder.id, i, editingStepValue.trim());
+                              setEditingStepIdx(null);
+                            } else if (e.key === 'Escape') {
+                              setEditingStepIdx(null);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (editingStepValue.trim()) onEditStepLabel(ladder.id, i, editingStepValue.trim());
+                            setEditingStepIdx(null);
+                          }}
+                          style={{
+                            flex: 1,
+                            fontSize: 13,
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-sm)',
+                            border: '1.5px solid var(--sage)',
+                            fontFamily: 'inherit',
+                            backgroundColor: '#fff',
+                            color: 'var(--bark)',
+                            outline: 'none',
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: step.done ? 700 : 500,
+                            color: step.done ? 'var(--bark)' : 'var(--stone)',
+                            backgroundColor: step.done ? 'var(--sage-light)' : '#FAFAF8',
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-sm)',
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          {step.label}
+                        </span>
+                        <motion.button
+                          whileTap={{ scale: 0.85 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingStepIdx(i);
+                            setEditingStepValue(step.label);
+                          }}
+                          style={{ padding: 2, color: 'var(--stone)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6 }}
+                        >
+                          <Pencil size={11} />
+                        </motion.button>
+                      </div>
+                    )}
+                    {step.done && step.completedAt && editingStepIdx !== i && (
                       <span style={{ fontSize: 9, color: '#A0A0A0', paddingLeft: 10, marginTop: 1 }}>
                         {formatShortDate(step.completedAt)} &middot; {formatTime(step.completedAt)}
                       </span>
@@ -755,7 +897,7 @@ function AddLadderSheet({ open, onClose, onAdd }) {
                 <motion.button
                   whileTap={{ scale: 0.85 }}
                   onClick={() => removeStep(i)}
-                  style={{ padding: 4, color: 'var(--stone)' }}
+                  style={{ padding: 4, color: 'var(--stone)', background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   <Trash2 size={14} />
                 </motion.button>
@@ -779,6 +921,97 @@ function AddLadderSheet({ open, onClose, onAdd }) {
 /*  Ladders view                                                       */
 /* ------------------------------------------------------------------ */
 
+function EditLadderSheet({ ladder, open, onClose, onSave }) {
+  const [targetFood, setTargetFood] = useState('');
+  const [steps, setSteps] = useState([]);
+
+  // Re-sync whenever a different ladder is opened
+  const [prevId, setPrevId] = useState(null);
+  if (ladder && ladder.id !== prevId) {
+    setPrevId(ladder.id);
+    setTargetFood(ladder.targetFood);
+    setSteps(ladder.steps.map((s) => ({ ...s })));
+  }
+
+  const updateStepLabel = (i, val) => {
+    setSteps((prev) => prev.map((s, j) => (j === i ? { ...s, label: val } : s)));
+  };
+
+  const removeStep = (i) => {
+    if (steps.length <= 1) return;
+    setSteps((prev) => prev.filter((_, j) => j !== i));
+  };
+
+  const addStep = () => setSteps((prev) => [...prev, { label: '', done: false }]);
+
+  const handleSave = () => {
+    if (!targetFood.trim()) return;
+    const validSteps = steps.filter((s) => s.label.trim());
+    if (validSteps.length === 0) return;
+    onSave(ladder.id, { targetFood: targetFood.trim(), steps: validSteps.map((s, i) => ({ ...s, label: s.label.trim(), order: i })) });
+    onClose();
+  };
+
+  if (!ladder) return null;
+
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Edit ladder">
+      <Input label="Target food" value={targetFood} onChange={(e) => setTargetFood(e.target.value)} />
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#4A5C4C', marginBottom: 5 }}>
+          Steps (bottom to top)
+        </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {steps.map((s, i) => (
+            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--stone)', minWidth: 20, textAlign: 'center' }}>
+                {i + 1}
+              </span>
+              <input
+                value={s.label}
+                onChange={(e) => updateStepLabel(i, e.target.value)}
+                placeholder={`Step ${i + 1}`}
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1.5px solid var(--sand)',
+                  fontSize: 13,
+                  fontFamily: 'inherit',
+                  backgroundColor: '#FAFAF8',
+                  color: 'var(--bark)',
+                  outline: 'none',
+                }}
+              />
+              {steps.length > 1 && (
+                <motion.button
+                  whileTap={{ scale: 0.85 }}
+                  onClick={() => removeStep(i)}
+                  style={{ padding: 4, color: 'var(--stone)', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  <Trash2 size={14} />
+                </motion.button>
+              )}
+            </div>
+          ))}
+        </div>
+        <Button variant="ghost" onClick={addStep} style={{ marginTop: 8, fontSize: 12 }}>
+          <Plus size={14} /> Add step
+        </Button>
+      </div>
+
+      <Button onClick={handleSave} style={{ width: '100%' }}>
+        Save ladder
+      </Button>
+    </BottomSheet>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Ladders view                                                       */
+/* ------------------------------------------------------------------ */
+
 function ExposureLadderView({ addOpen, onCloseAdd }) {
   const { ladders, setLadders, wins, setWins } = useApp();
   const toast = useToast();
@@ -786,6 +1019,7 @@ function ExposureLadderView({ addOpen, onCloseAdd }) {
   const [celebrateId, setCelebrateId] = useState(null);
   const [confirmWin, setConfirmWin] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
+  const [editingLadder, setEditingLadder] = useState(null);
 
   const handleAdd = (ladder) => {
     setLadders((prev) => [ladder, ...prev]);
@@ -837,6 +1071,21 @@ function ExposureLadderView({ addOpen, onCloseAdd }) {
     setConfirmWin(null);
   };
 
+  const handleEditLadder = (id, updates) => {
+    setLadders((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
+    toast('Ladder updated!', 'success');
+  };
+
+  const handleEditStepLabel = (ladderId, stepIdx, newLabel) => {
+    setLadders((prev) =>
+      prev.map((l) =>
+        l.id === ladderId
+          ? { ...l, steps: l.steps.map((s, i) => (i === stepIdx ? { ...s, label: newLabel } : s)) }
+          : l,
+      ),
+    );
+  };
+
   return (
     <>
       {ladders.length === 0 ? (
@@ -878,9 +1127,19 @@ function ExposureLadderView({ addOpen, onCloseAdd }) {
                     whileTap={{ scale: 0.85 }}
                     onClick={(e) => {
                       e.stopPropagation();
+                      setEditingLadder(l);
+                    }}
+                    style={{ padding: 4, color: 'var(--stone)', background: 'none', border: 'none', cursor: 'pointer' }}
+                  >
+                    <Pencil size={15} />
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.85 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setConfirmDelete(l.id);
                     }}
-                    style={{ padding: 4, color: 'var(--stone)' }}
+                    style={{ padding: 4, color: 'var(--stone)', background: 'none', border: 'none', cursor: 'pointer' }}
                   >
                     <Trash2 size={15} />
                   </motion.button>
@@ -897,7 +1156,7 @@ function ExposureLadderView({ addOpen, onCloseAdd }) {
                     transition={{ type: 'spring', duration: 0.4, bounce: 0.1 }}
                     style={{ overflow: 'hidden' }}
                   >
-                    <LadderVisual ladder={l} onToggleRung={handleToggleRung} />
+                    <LadderVisual ladder={l} onToggleRung={handleToggleRung} onEditStepLabel={handleEditStepLabel} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -907,6 +1166,13 @@ function ExposureLadderView({ addOpen, onCloseAdd }) {
       )}
 
       <AddLadderSheet open={addOpen} onClose={onCloseAdd} onAdd={handleAdd} />
+
+      <EditLadderSheet
+        ladder={editingLadder}
+        open={!!editingLadder}
+        onClose={() => setEditingLadder(null)}
+        onSave={handleEditLadder}
+      />
 
       <ConfirmDialog
         open={!!confirmDelete}
