@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import { usePersistedState } from '../hooks/usePersistedState';
+import { useSupabaseState } from '../hooks/useSupabaseState';
 
 const AppContext = createContext(null);
 
@@ -10,13 +10,13 @@ export function useApp() {
 }
 
 export function AppProvider({ children }) {
-  const [foodMap, setFoodMap, fmLoaded] = usePersistedState('nourish-food-map', []);
-  const [bridges, setBridges, brLoaded] = usePersistedState('nourish-bridges', []);
-  const [triggers, setTriggers, trLoaded] = usePersistedState('nourish-triggers', []);
-  const [ladders, setLadders, laLoaded] = usePersistedState('nourish-ladders', []);
-  const [wins, setWins, wiLoaded] = usePersistedState('nourish-wins', []);
-  const [moods, setMoods, moLoaded] = usePersistedState('nourish-moods', []);
-  const [sessionNotes, setSessionNotes, snLoaded] = usePersistedState('nourish-session-notes', []);
+  const [foodMap, setFoodMap, fmLoaded] = useSupabaseState('food_map', 'nourish-food-map');
+  const [bridges, setBridges, brLoaded] = useSupabaseState('bridges', 'nourish-bridges');
+  const [triggers, setTriggers, trLoaded] = useSupabaseState('triggers', 'nourish-triggers');
+  const [ladders, setLadders, laLoaded] = useSupabaseState('ladders', 'nourish-ladders');
+  const [wins, setWins, wiLoaded] = useSupabaseState('wins', 'nourish-wins');
+  const [moods, setMoods, moLoaded] = useSupabaseState('moods', 'nourish-moods');
+  const [sessionNotes, setSessionNotes, snLoaded] = useSupabaseState('session_notes', 'nourish-session-notes');
 
   const allLoaded = fmLoaded && brLoaded && trLoaded && laLoaded && wiLoaded && moLoaded && snLoaded;
 
