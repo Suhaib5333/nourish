@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
-import { Card, Badge, BottomSheet, SegmentedControl, EmptyState } from '../../components/ui';
-import { formatDate, formatShortDate, formatTime } from '../../utils/dates';
+import { Badge, BottomSheet, EmptyState } from '../../components/ui';
+import { formatDate, formatShortDate } from '../../utils/dates';
 import { getTopTrigger, getAverageComfort } from '../../utils/analytics';
 import {
   CATEGORIES,
@@ -10,353 +10,386 @@ import {
   CATEGORY_COLORS,
   TRIGGER_WEATHER,
 } from '../../utils/constants';
-import { Database, Trophy, Utensils, Brain, CloudRain } from 'lucide-react';
+import {
+  Database, Trophy, Utensils, Brain, CloudRain,
+  Salad, Zap, Award,
+} from 'lucide-react';
 
 const PURPLE = '#7B68A8';
+const PURPLE_BG = '#F3EFF8';
 
+/* ── Tab config ── */
 const TABS = [
-  { value: 'foods', label: 'Foods' },
-  { value: 'wins', label: 'Wins' },
-  { value: 'mood', label: 'Mood' },
-  { value: 'triggers', label: 'Triggers' },
+  { id: 'foods', label: 'Foods', Icon: Salad },
+  { id: 'wins', label: 'Wins', Icon: Award },
+  { id: 'mood', label: 'Mood', Icon: Brain },
+  { id: 'triggers', label: 'Triggers', Icon: Zap },
 ];
 
-const item = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', duration: 0.35, bounce: 0.1 } },
+/* ── Stagger animation ── */
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+const fadeUp = {
+  hidden: { opacity: 0, y: 6 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', duration: 0.3, bounce: 0 } },
 };
 
+/* ═══════════════════════════════════════════ */
+/*  Main Component                             */
+/* ═══════════════════════════════════════════ */
 export default function PatientData() {
   const { foodMap, wins, moods, triggers } = useApp();
   const [tab, setTab] = useState('foods');
-  const [categoryFilter, setCategoryFilter] = useState('All');
-  const [foodDetail, setFoodDetail] = useState(null);
+  const [catFilter, setCatFilter] = useState('All');
+  const [detail, setDetail] = useState(null);
 
-  const filteredFoods = useMemo(() => {
-    if (categoryFilter === 'All') return foodMap;
-    return foodMap.filter((f) => f.category === categoryFilter);
-  }, [foodMap, categoryFilter]);
+  const foods = useMemo(() => {
+    if (catFilter === 'All') return foodMap;
+    return foodMap.filter((f) => f.category === catFilter);
+  }, [foodMap, catFilter]);
 
-  const sortedWins = useMemo(
-    () => [...wins].sort((a, b) => new Date(b.date) - new Date(a.date)),
-    [wins],
-  );
-
-  const sortedMoods = useMemo(
-    () => [...moods].sort((a, b) => new Date(b.date) - new Date(a.date)),
-    [moods],
-  );
-
-  const sortedTriggers = useMemo(
-    () => [...triggers].sort((a, b) => new Date(b.date) - new Date(a.date)),
-    [triggers],
-  );
-
+  const sortedWins = useMemo(() => [...wins].sort((a, b) => new Date(b.date) - new Date(a.date)), [wins]);
+  const sortedMoods = useMemo(() => [...moods].sort((a, b) => new Date(b.date) - new Date(a.date)), [moods]);
+  const sortedTriggers = useMemo(() => [...triggers].sort((a, b) => new Date(b.date) - new Date(a.date)), [triggers]);
   const avgComfort = useMemo(() => getAverageComfort(moods), [moods]);
   const topTrigger = useMemo(() => getTopTrigger(triggers), [triggers]);
 
   return (
-    <div style={{ overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <Database size={20} color={PURPLE} />
+    <div style={{ width: '100%', maxWidth: '100%' }}>
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8, backgroundColor: PURPLE_BG,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Database size={16} color={PURPLE} />
+        </div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: 'var(--bark)', margin: 0 }}>
           Patient Data
         </h2>
       </div>
 
-      <SegmentedControl options={TABS} value={tab} onChange={setTab} />
+      {/* ── Custom Tab Bar ── */}
+      <div style={{
+        display: 'flex', gap: 6, marginBottom: 16,
+        backgroundColor: '#EAE5DF', borderRadius: 10, padding: 3,
+      }}>
+        {TABS.map(({ id, label, Icon }) => {
+          const active = tab === id;
+          return (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              style={{
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                gap: 2, padding: '7px 4px', borderRadius: 8, border: 'none',
+                backgroundColor: active ? '#fff' : 'transparent',
+                boxShadow: active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                color: active ? PURPLE : 'var(--stone)',
+                cursor: 'pointer', transition: 'all 0.2s',
+                fontSize: 10, fontWeight: 700, letterSpacing: 0.3,
+              }}
+            >
+              <Icon size={16} strokeWidth={active ? 2.5 : 2} />
+              {label}
+            </button>
+          );
+        })}
+      </div>
 
-      {/* ── Foods Tab ── */}
+      {/* ── FOODS ── */}
       {tab === 'foods' && (
-        <div>
-          {/* Stats bar */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            fontSize: 13, color: 'var(--stone)', fontWeight: 600, marginBottom: 10,
-          }}>
-            <Utensils size={14} />
-            <span>{filteredFoods.length} safe food{filteredFoods.length !== 1 ? 's' : ''}</span>
-          </div>
+        <>
+          <StatBar icon={<Utensils size={13} />} text={`${foods.length} safe food${foods.length !== 1 ? 's' : ''}`} />
 
-          {/* Category filters — horizontal scroll */}
-          <div style={{
-            display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12,
-            WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none',
-          }}>
+          {/* Filters — wrapping, not scrolling */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 12 }}>
             {['All', ...CATEGORIES].map((cat) => {
-              const active = categoryFilter === cat;
+              const active = catFilter === cat;
               return (
                 <button
                   key={cat}
-                  onClick={() => setCategoryFilter(cat)}
+                  onClick={() => setCatFilter(cat)}
                   style={{
-                    flexShrink: 0, padding: '5px 12px', fontSize: 11, fontWeight: 700,
-                    borderRadius: 'var(--radius-full)',
-                    backgroundColor: active ? PURPLE : '#F0EBE5',
+                    padding: '4px 10px', fontSize: 10, fontWeight: 700,
+                    borderRadius: 20, border: 'none', cursor: 'pointer',
+                    backgroundColor: active ? PURPLE : '#EAE5DF',
                     color: active ? '#fff' : 'var(--bark)',
-                    border: 'none', cursor: 'pointer', transition: 'all 0.2s',
-                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s',
                   }}
                 >
-                  {cat !== 'All' && CATEGORY_ICONS[cat] + ' '}{cat}
+                  {cat !== 'All' ? `${CATEGORY_ICONS[cat]} ${cat}` : 'All'}
                 </button>
               );
             })}
           </div>
 
-          {filteredFoods.length === 0 ? (
+          {foods.length === 0 ? (
             <EmptyState icon="🍽️" text="No foods in this category." />
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {filteredFoods.map((food) => (
-                <motion.div key={food.id} variants={item} initial="hidden" animate="show">
-                  <Card
-                    animate={false}
-                    onClick={() => setFoodDetail(food)}
-                    style={{ padding: 12, cursor: 'pointer', overflow: 'hidden', height: '100%' }}
+            <motion.div
+              variants={stagger} initial="hidden" animate="show"
+              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}
+            >
+              {foods.map((f) => (
+                <motion.div key={f.id} variants={fadeUp} style={{ minWidth: 0 }}>
+                  <div
+                    onClick={() => setDetail(f)}
+                    style={{
+                      backgroundColor: '#fff', borderRadius: 12, padding: 12,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)', cursor: 'pointer',
+                      display: 'flex', flexDirection: 'column',
+                      height: 130, overflow: 'hidden',
+                    }}
                   >
-                    <div style={{ fontSize: 24, marginBottom: 4 }}>
-                      {CATEGORY_ICONS[food.category] || '🍽️'}
+                    <div style={{ fontSize: 22, lineHeight: 1 }}>
+                      {CATEGORY_ICONS[f.category] || '🍽️'}
                     </div>
                     <div style={{
-                      fontSize: 13, fontWeight: 700, color: 'var(--bark)', marginBottom: 4,
-                      lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis',
-                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      fontSize: 13, fontWeight: 700, color: 'var(--bark)',
+                      marginTop: 6, lineHeight: 1.25,
+                      overflow: 'hidden', display: '-webkit-box',
+                      WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      wordBreak: 'break-word',
                     }}>
-                      {food.name}
+                      {f.name}
                     </div>
-                    <Badge text={food.category} color={CATEGORY_COLORS[food.category] || '#B0BEC5'} />
-                    {food.prepMethod && (
-                      <div style={{
-                        fontSize: 11, color: 'var(--stone)', marginTop: 4,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        {food.prepMethod}
-                      </div>
-                    )}
-                  </Card>
+                    <div style={{ marginTop: 'auto', paddingTop: 6 }}>
+                      <Badge text={f.category} color={CATEGORY_COLORS[f.category] || '#B0BEC5'} />
+                    </div>
+                  </div>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
 
-          <BottomSheet open={!!foodDetail} onClose={() => setFoodDetail(null)} title={foodDetail?.name}>
-            {foodDetail && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 28 }}>{CATEGORY_ICONS[foodDetail.category] || '🍽️'}</span>
-                  <Badge text={foodDetail.category} color={CATEGORY_COLORS[foodDetail.category] || '#B0BEC5'} />
+          <BottomSheet open={!!detail} onClose={() => setDetail(null)} title={detail?.name}>
+            {detail && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 32 }}>{CATEGORY_ICONS[detail.category] || '🍽️'}</span>
+                  <Badge text={detail.category} color={CATEGORY_COLORS[detail.category] || '#B0BEC5'} />
                 </div>
-                {foodDetail.prepMethod && <DetailRow label="Prep Method" value={foodDetail.prepMethod} />}
-                {foodDetail.whatILike && <DetailRow label="What I Like" value={foodDetail.whatILike} />}
-                {foodDetail.wouldntEat && <DetailRow label="Wouldn't Eat If" value={foodDetail.wouldntEat} />}
-                {foodDetail.dateAdded && <DetailRow label="Added" value={formatDate(foodDetail.dateAdded)} />}
+                {detail.prepMethod && <DetailSection label="Preparation" value={detail.prepMethod} />}
+                {detail.whatILike && <DetailSection label="What I Like" value={detail.whatILike} />}
+                {detail.wouldntEat && <DetailSection label="Won't Eat If" value={detail.wouldntEat} />}
+                {detail.dateAdded && <DetailSection label="Added" value={formatDate(detail.dateAdded)} />}
               </div>
             )}
           </BottomSheet>
-        </div>
+        </>
       )}
 
-      {/* ── Wins Tab ── */}
+      {/* ── WINS ── */}
       {tab === 'wins' && (
-        <div>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            fontSize: 13, color: 'var(--stone)', fontWeight: 600, marginBottom: 10,
-          }}>
-            <Trophy size={14} />
-            <span>{sortedWins.length} victor{sortedWins.length !== 1 ? 'ies' : 'y'}</span>
-          </div>
+        <>
+          <StatBar icon={<Trophy size={13} />} text={`${sortedWins.length} victor${sortedWins.length !== 1 ? 'ies' : 'y'}`} />
 
           {sortedWins.length === 0 ? (
             <EmptyState icon="🏆" text="No wins recorded yet." />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {sortedWins.map((win) => (
-                <motion.div key={win.id} variants={item} initial="hidden" animate="show">
-                  <Card animate={false} style={{ padding: 12, overflow: 'hidden' }}>
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between',
-                      alignItems: 'flex-start', gap: 8, marginBottom: 4,
-                    }}>
-                      <span style={{
-                        fontSize: 14, fontWeight: 700, color: 'var(--bark)',
-                        flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        🎉 {win.food}
-                      </span>
-                      <span style={{ fontSize: 11, color: 'var(--stone)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                        {formatShortDate(win.date)}
-                      </span>
-                    </div>
-                    {win.notes && (
-                      <div style={{
-                        fontSize: 12, color: '#6B7E6D', lineHeight: 1.4, marginBottom: 4,
-                        overflow: 'hidden', textOverflow: 'ellipsis',
-                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                      }}>
-                        {win.notes}
-                      </div>
+            <motion.div variants={stagger} initial="hidden" animate="show" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {sortedWins.map((w) => (
+                <motion.div key={w.id} variants={fadeUp}>
+                  <DataCard>
+                    <CardHeader title={`🎉 ${w.food}`} date={formatShortDate(w.date)} />
+                    {w.notes && <CardBody text={w.notes} />}
+                    {w.source && w.source !== 'manual' && (
+                      <div style={{ marginTop: 6 }}><Badge text={`from ${w.source}`} color={PURPLE} /></div>
                     )}
-                    {win.source && win.source !== 'manual' && (
-                      <Badge text={`from ${win.source}`} color={PURPLE} />
-                    )}
-                  </Card>
+                  </DataCard>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
-        </div>
+        </>
       )}
 
-      {/* ── Mood Tab ── */}
+      {/* ── MOOD ── */}
       {tab === 'mood' && (
-        <div>
-          {/* Stats row */}
+        <>
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-            fontSize: 13, color: 'var(--stone)', fontWeight: 600, marginBottom: 10,
+            display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
+            fontSize: 12, color: 'var(--stone)', fontWeight: 600, marginBottom: 12,
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Brain size={14} />
-              {sortedMoods.length} meal{sortedMoods.length !== 1 ? 's' : ''} logged
+              <Brain size={13} /> {sortedMoods.length} meal{sortedMoods.length !== 1 ? 's' : ''}
             </span>
             {sortedMoods.length > 0 && (
-              <span>Avg comfort: <strong style={{ color: PURPLE }}>{avgComfort.toFixed(1)}/5</strong></span>
+              <span style={{
+                padding: '2px 8px', borderRadius: 12,
+                backgroundColor: PURPLE_BG, color: PURPLE, fontWeight: 700,
+              }}>
+                Avg {avgComfort.toFixed(1)}/5
+              </span>
             )}
           </div>
 
           {sortedMoods.length === 0 ? (
             <EmptyState icon="🌱" text="No mood entries yet." />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {sortedMoods.map((mood) => (
-                <motion.div key={mood.id} variants={item} initial="hidden" animate="show">
-                  <Card animate={false} style={{ padding: 12, overflow: 'hidden' }}>
-                    {/* Header: meal name + date */}
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between',
-                      alignItems: 'flex-start', gap: 8, marginBottom: 6,
-                    }}>
-                      <span style={{
-                        fontSize: 14, fontWeight: 700, color: 'var(--bark)',
-                        flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        {mood.meal}
-                      </span>
-                      <span style={{ fontSize: 10, color: 'var(--stone)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                        {formatShortDate(mood.date)}
-                      </span>
+            <motion.div variants={stagger} initial="hidden" animate="show" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {sortedMoods.map((m) => (
+                <motion.div key={m.id} variants={fadeUp}>
+                  <DataCard>
+                    <CardHeader title={m.meal} date={formatShortDate(m.date)} />
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', margin: '6px 0' }}>
+                      {m.mealTime && <MicroBadge text={m.mealTime} bg="#E3F2FD" fg="#1976D2" />}
+                      <MicroBadge text={`${m.comfort}/5`} bg={PURPLE_BG} fg={PURPLE} />
+                      {m.moodBefore && <MicroBadge text={`B: ${m.moodBefore}`} bg="#E8F5E9" fg="#388E3C" />}
+                      {m.moodAfter && <MicroBadge text={`A: ${m.moodAfter}`} bg="#E0F2F1" fg="#00796B" />}
                     </div>
-                    {/* Badges row */}
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
-                      {mood.mealTime && <Badge text={mood.mealTime} color="#4A90D9" />}
-                      <Badge text={`${mood.comfort}/5`} color={PURPLE} />
-                      {mood.moodBefore && <Badge text={`B: ${mood.moodBefore}`} color="#8A9A7B" />}
-                      {mood.moodAfter && <Badge text={`A: ${mood.moodAfter}`} color="#2A9D8F" />}
-                    </div>
-                    {/* Notes */}
-                    {mood.notes && (
-                      <div style={{
-                        fontSize: 12, color: '#6B7E6D', lineHeight: 1.4,
-                        overflow: 'hidden', textOverflow: 'ellipsis',
-                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                      }}>
-                        {mood.notes}
-                      </div>
-                    )}
-                  </Card>
+                    {m.notes && <CardBody text={m.notes} />}
+                  </DataCard>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
-        </div>
+        </>
       )}
 
-      {/* ── Triggers Tab ── */}
+      {/* ── TRIGGERS ── */}
       {tab === 'triggers' && (
-        <div>
+        <>
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-            fontSize: 13, color: 'var(--stone)', fontWeight: 600, marginBottom: 10,
+            display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
+            fontSize: 12, color: 'var(--stone)', fontWeight: 600, marginBottom: 12,
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <CloudRain size={14} />
-              {sortedTriggers.length} trigger{sortedTriggers.length !== 1 ? 's' : ''}
+              <CloudRain size={13} /> {sortedTriggers.length} trigger{sortedTriggers.length !== 1 ? 's' : ''}
             </span>
             {topTrigger && (
-              <span>Top: <strong style={{ color: '#D32F2F' }}>{topTrigger.type}</strong></span>
+              <span style={{
+                padding: '2px 8px', borderRadius: 12,
+                backgroundColor: '#FDECEC', color: '#D32F2F', fontWeight: 700,
+              }}>
+                Top: {topTrigger.type}
+              </span>
             )}
           </div>
 
           {sortedTriggers.length === 0 ? (
             <EmptyState icon="☀️" text="No trigger entries yet." />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <motion.div variants={stagger} initial="hidden" animate="show" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {sortedTriggers.map((t) => {
-                const weather = TRIGGER_WEATHER[t.triggerType] || TRIGGER_WEATHER['Other'];
+                const w = TRIGGER_WEATHER[t.triggerType] || TRIGGER_WEATHER['Other'];
                 return (
-                  <motion.div key={t.id} variants={item} initial="hidden" animate="show">
-                    <Card animate={false} style={{ padding: 12, overflow: 'hidden' }}>
-                      {/* Header: food + date */}
-                      <div style={{
-                        display: 'flex', justifyContent: 'space-between',
-                        alignItems: 'flex-start', gap: 8, marginBottom: 6,
-                      }}>
-                        <span style={{
-                          fontSize: 14, fontWeight: 700, color: 'var(--bark)',
-                          flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {weather.icon} {t.food}
-                        </span>
-                        <span style={{ fontSize: 10, color: 'var(--stone)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                          {formatShortDate(t.date)}
-                        </span>
-                      </div>
-                      {/* Badges */}
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
-                        <Badge text={t.triggerType} color="#D32F2F" />
-                        <Badge
+                  <motion.div key={t.id} variants={fadeUp}>
+                    <DataCard>
+                      <CardHeader title={`${w.icon} ${t.food}`} date={formatShortDate(t.date)} />
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', margin: '6px 0' }}>
+                        <MicroBadge text={t.triggerType} bg="#FDECEC" fg="#D32F2F" />
+                        <MicroBadge
                           text={t.avoided ? 'Avoided' : 'Ate it'}
-                          color={t.avoided ? '#E57373' : '#2A9D8F'}
+                          bg={t.avoided ? '#FFF3E0' : '#E8F5E9'}
+                          fg={t.avoided ? '#E65100' : '#2E7D32'}
                         />
-                        {t.mealTime && <Badge text={t.mealTime} color="#4A90D9" />}
+                        {t.mealTime && <MicroBadge text={t.mealTime} bg="#E3F2FD" fg="#1976D2" />}
                       </div>
-                      {/* Description */}
-                      {t.description && (
-                        <div style={{
-                          fontSize: 12, color: '#6B7E6D', lineHeight: 1.4,
-                          overflow: 'hidden', textOverflow: 'ellipsis',
-                          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                        }}>
-                          {t.description}
-                        </div>
-                      )}
-                    </Card>
+                      {t.description && <CardBody text={t.description} />}
+                    </DataCard>
                   </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           )}
-        </div>
+        </>
       )}
     </div>
   );
 }
 
-function DetailRow({ label, value }) {
+/* ═══════════════════════════════════════════ */
+/*  Sub-components                             */
+/* ═══════════════════════════════════════════ */
+
+function StatBar({ icon, text }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 6,
+      fontSize: 12, color: 'var(--stone)', fontWeight: 600, marginBottom: 10,
+    }}>
+      {icon}
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function DataCard({ children }) {
+  return (
+    <div style={{
+      backgroundColor: '#fff', borderRadius: 10, padding: '10px 12px',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.04)', overflow: 'hidden',
+      width: '100%', boxSizing: 'border-box',
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function CardHeader({ title, date }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+      gap: 8, width: '100%', overflow: 'hidden',
+    }}>
+      <span style={{
+        fontSize: 13, fontWeight: 700, color: 'var(--bark)',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        flex: 1, minWidth: 0,
+      }}>
+        {title}
+      </span>
+      <span style={{
+        fontSize: 10, color: 'var(--stone)', flexShrink: 0, whiteSpace: 'nowrap',
+      }}>
+        {date}
+      </span>
+    </div>
+  );
+}
+
+function CardBody({ text }) {
+  return (
+    <div style={{
+      fontSize: 11, color: '#7A8A7C', lineHeight: 1.4, marginTop: 4,
+      overflow: 'hidden', textOverflow: 'ellipsis',
+      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+      wordBreak: 'break-word',
+    }}>
+      {text}
+    </div>
+  );
+}
+
+function MicroBadge({ text, bg, fg }) {
+  return (
+    <span style={{
+      fontSize: 9, fontWeight: 700, padding: '2px 7px',
+      borderRadius: 10, backgroundColor: bg, color: fg,
+      whiteSpace: 'nowrap', lineHeight: 1.4,
+    }}>
+      {text}
+    </span>
+  );
+}
+
+function DetailSection({ label, value }) {
   return (
     <div>
       <div style={{
-        fontSize: 11, fontWeight: 700, color: PURPLE, textTransform: 'uppercase',
-        letterSpacing: 0.5, marginBottom: 3,
+        fontSize: 10, fontWeight: 700, color: PURPLE, textTransform: 'uppercase',
+        letterSpacing: 0.8, marginBottom: 4,
       }}>
         {label}
       </div>
       <div style={{
         fontSize: 14, color: 'var(--bark)', lineHeight: 1.5,
         wordBreak: 'break-word', overflowWrap: 'break-word',
+        backgroundColor: '#FAFAF8', borderRadius: 8, padding: '8px 10px',
       }}>
         {value}
       </div>
