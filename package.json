@@ -7,9 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:migrate": "bash supabase/migrate.sh",
+    "db:query": "bash -c 'source .env 2>/dev/null; npx supabase db query --db-url \"$SUPABASE_DB_URL\"'"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.103.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.8.0",
     "react": "^19.2.4",
