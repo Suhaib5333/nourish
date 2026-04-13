@@ -23,16 +23,25 @@ function PatientGuard({ children }) {
 function TherapistGuard({ children }) {
   const { role, pinVerified } = useRole();
   if (!role) return <Navigate to="/" replace />;
-  if (role !== 'therapist' || !pinVerified) return <Navigate to="/" replace />;
+  if (role !== 'therapist') return <Navigate to="/" replace />;
+  if (!pinVerified) return <Navigate to="/" replace />;
   return children;
 }
 
 export default function App() {
-  const { role } = useRole();
+  const { role, pinVerified } = useRole();
+
+  const getHomeRedirect = () => {
+    if (role === 'therapist' && pinVerified) return '/therapist';
+    if (role === 'patient') return '/home';
+    return null;
+  };
+
+  const homeRedirect = getHomeRedirect();
 
   return (
     <Routes>
-      <Route path="/" element={!role ? <RoleSelect /> : <Navigate to={role === 'therapist' ? '/therapist' : '/home'} replace />} />
+      <Route path="/" element={homeRedirect ? <Navigate to={homeRedirect} replace /> : <RoleSelect />} />
 
       {/* Patient routes */}
       <Route element={<PatientGuard><AppShell /></PatientGuard>}>
