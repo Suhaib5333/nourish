@@ -54,4 +54,4 @@ export const TRIGGER_WEATHER = {
 
 export const MEAL_TIMES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Other'];
 
-export const SESSION_TYPES = ['Initial Assessment', 'Follow-up', 'Check-in', 'Crisis'];
+export const SESSION_TYPES = ['Initial Assessment', 'Follow-up', 'Check-in', 'Crisis', 'General'];

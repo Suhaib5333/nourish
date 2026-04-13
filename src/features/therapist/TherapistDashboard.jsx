@@ -13,6 +13,7 @@ import {
   ClipboardList,
   ArrowRight,
   Lightbulb,
+  Database,
 } from 'lucide-react';
 
 const PURPLE = '#7B68A8';
@@ -204,7 +205,7 @@ export default function TherapistDashboard() {
       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--stone)', marginBottom: 8 }}>
         Quick Actions
       </div>
-      <div style={{ display: 'flex', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
         <Button
           style={{ flex: 1, backgroundColor: PURPLE }}
           onClick={() => navigate('/therapist/plan')}
@@ -221,6 +222,15 @@ export default function TherapistDashboard() {
           <ArrowRight size={14} />
         </Button>
       </div>
+      <Button
+        variant="secondary"
+        style={{ width: '100%' }}
+        onClick={() => navigate('/therapist/data')}
+      >
+        <Database size={16} />
+        View patient data
+        <ArrowRight size={14} />
+      </Button>
     </div>
   );
 }

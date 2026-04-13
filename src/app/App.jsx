@@ -12,6 +12,7 @@ import PatientTimeline from '../features/therapist/PatientTimeline';
 import TherapistAnalysis from '../features/therapist/TherapistAnalysis';
 import TherapistPlan from '../features/therapist/TherapistPlan';
 import SessionNotes from '../features/therapist/SessionNotes';
+import PatientData from '../features/therapist/PatientData';
 
 function PatientGuard({ children }) {
   const { role } = useRole();
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="/therapist/timeline" element={<PatientTimeline />} />
         <Route path="/therapist/analysis" element={<TherapistAnalysis />} />
         <Route path="/therapist/plan" element={<TherapistPlan />} />
+        <Route path="/therapist/data" element={<PatientData />} />
         <Route path="/therapist/notes" element={<SessionNotes />} />
       </Route>
 

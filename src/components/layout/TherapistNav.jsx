@@ -1,10 +1,11 @@
 import { useLocation, useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Clock, BarChart3, Route, StickyNote } from 'lucide-react';
+import { LayoutDashboard, Clock, Database, BarChart3, Route, StickyNote } from 'lucide-react';
 
 const TABS = [
   { path: '/therapist', label: 'Dashboard', Icon: LayoutDashboard, exact: true },
   { path: '/therapist/timeline', label: 'Timeline', Icon: Clock },
+  { path: '/therapist/data', label: 'Data', Icon: Database },
   { path: '/therapist/analysis', label: 'Analysis', Icon: BarChart3 },
   { path: '/therapist/plan', label: 'Plan', Icon: Route },
   { path: '/therapist/notes', label: 'Notes', Icon: StickyNote },
@@ -52,10 +53,10 @@ export default function TherapistNav() {
               position: 'relative',
             }}
           >
-            <Icon size={22} strokeWidth={active ? 2.5 : 2} color={active ? '#7B68A8' : 'var(--bark)'} />
+            <Icon size={20} strokeWidth={active ? 2.5 : 2} color={active ? '#7B68A8' : 'var(--bark)'} />
             <span
               style={{
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: 700,
                 color: active ? '#7B68A8' : 'var(--bark)',
                 letterSpacing: 0.3,

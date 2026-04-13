@@ -24,6 +24,7 @@ const SESSION_COLORS = {
   'Follow-up': '#4A90D9',
   'Check-in': '#2A9D8F',
   'Crisis': '#D32F2F',
+  'General': '#8A9A7B',
 };
 
 export default function SessionNotes() {
